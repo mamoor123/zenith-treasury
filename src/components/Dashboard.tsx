@@ -205,10 +205,9 @@ export default function Dashboard() {
               </span>
             )}
           </div>
-          
-          {!dbStatus.isMock && invoices.length === 0 && (
-            <div className="mt-2 text-xs text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 rounded p-2 max-w-xl">
-              ⚠️ <strong>Database Connected but Empty:</strong> A live database URL was detected ({dbStatus.urlValue}), but no tables or schemas have been initialized. Please run <code>npx prisma db push</code> on your workspace to sync the schema.
+          {dbStatus.hasUrl && dbStatus.isMock && (
+            <div className="mt-2 text-xs text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded p-2 max-w-xl">
+              ⚠️ <strong>Database Un-migrated or Offline:</strong> A live database URL was detected ({dbStatus.urlValue}), but querying tables failed. The app has automatically fallen back to <strong>Mock Demo Mode</strong> to remain operational. Run <code>npx prisma db push</code> on your workspace to sync the schema.
             </div>
           )}
           <p className="text-gray-400 text-sm mt-1">

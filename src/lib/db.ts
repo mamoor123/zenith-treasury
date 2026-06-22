@@ -477,16 +477,69 @@ const mockDb = {
   }
 };
 
-// Export active db interface (real or mock)
-export const db = prismaInstance ? { 
+// Internal state to track if we dynamically fell back to mock data
+let isMockFallbackState = false;
+
+// Export active db interface (real or mock) with automatic fallback Proxy
+const baseDb = prismaInstance ? { 
   ...prismaInstance, 
   isMock: false,
   reset: async () => {
-    // Clear actual database tables
-    await prismaInstance.ledgerEntry.deleteMany();
-    await prismaInstance.agentLog.deleteMany();
-    await prismaInstance.invoice.updateMany({ data: { status: "PENDING" } });
-    await prismaInstance.bankTransaction.updateMany({ data: { status: "UNRECONCILED" } });
-    return { success: true };
+    try {
+      await prismaInstance.ledgerEntry.deleteMany();
+      await prismaInstance.agentLog.deleteMany();
+      await prismaInstance.invoice.updateMany({ data: { status: "PENDING" } });
+      await prismaInstance.bankTransaction.updateMany({ data: { status: "UNRECONCILED" } });
+      return { success: true };
+    } catch (e) {
+      console.warn("Real database reset failed, resetting mock instead:", e);
+      return await mockDb.reset();
+    }
   }
 } : mockDb;
+
+export const db = new Proxy(baseDb, {
+  get(target, prop) {
+    // If it's a metadata property, return dynamic state
+    if (prop === 'isMock') {
+      return prismaInstance ? isMockFallbackState : true;
+    }
+    if (prop === 'isMockFallback') {
+      return isMockFallbackState;
+    }
+    if (prop === 'reset') {
+      return target.reset;
+    }
+
+    // Intercept model properties (invoice, bankTransaction, ledgerEntry, agentLog)
+    const model = (target as any)[prop];
+    if (model && typeof model === 'object' && prop !== 'reset') {
+      return new Proxy(model, {
+        get(modelTarget, method) {
+          const originalMethod = modelTarget[method];
+          if (typeof originalMethod === 'function') {
+            return async function (...args: any[]) {
+              try {
+                // Try executing the real database query
+                return await originalMethod.apply(modelTarget, args);
+              } catch (error) {
+                // If it fails (e.g. table not found or connection error), log and fallback to mock!
+                console.warn(`Prisma query "${String(prop)}.${String(method)}" failed. Falling back to Mock Data. Error:`, error);
+                isMockFallbackState = true;
+                
+                // Get corresponding mock model
+                const mockModel = (mockDb as any)[prop];
+                if (mockModel && mockModel[method]) {
+                  return await mockModel[method].apply(mockModel, args);
+                }
+                throw error;
+              }
+            };
+          }
+          return originalMethod;
+        }
+      });
+    }
+    return target[prop as keyof typeof target];
+  }
+}) as any;
