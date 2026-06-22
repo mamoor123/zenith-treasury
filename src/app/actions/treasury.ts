@@ -70,3 +70,17 @@ export async function resetDemo() {
     return { success: false };
   }
 }
+
+// Fetch connection status of the database
+export async function getDbStatus() {
+  try {
+    return {
+      isMock: (db as any).isMock ?? false,
+      hasUrl: !!process.env.DATABASE_URL,
+      urlValue: process.env.DATABASE_URL ? `${process.env.DATABASE_URL.substring(0, 20)}...` : null,
+    };
+  } catch (error) {
+    return { isMock: true, hasUrl: false, urlValue: null };
+  }
+}
+

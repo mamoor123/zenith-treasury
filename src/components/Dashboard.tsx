@@ -23,6 +23,7 @@ import {
   getLedgerEntries,
   getAgentLogs,
   resetDemo,
+  getDbStatus,
 } from "@/app/actions/treasury";
 
 interface Invoice {
@@ -81,16 +82,22 @@ export default function Dashboard() {
   const [isRunning, setIsRunning] = useState(false);
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+  const [dbStatus, setDbStatus] = useState<{ isMock: boolean; hasUrl: boolean; urlValue: string | null }>({
+    isMock: true,
+    hasUrl: false,
+    urlValue: null,
+  });
 
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
   // Load initial data
   const loadData = async () => {
-    const [invs, txs, ledger, logs] = await Promise.all([
+    const [invs, txs, ledger, logs, status] = await Promise.all([
       getInvoices(),
       getBankTransactions(),
       getLedgerEntries(),
       getAgentLogs(),
+      getDbStatus(),
     ]);
     
     // Cast and set
@@ -98,6 +105,7 @@ export default function Dashboard() {
     setTransactions(txs as any);
     setLedgerEntries(ledger as any);
     setAgentLogs(logs as any);
+    setDbStatus(status);
   };
 
   useEffect(() => {
@@ -185,11 +193,24 @@ export default function Dashboard() {
             <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-gray-300 to-indigo-500 bg-clip-text text-transparent">
               Zenith Treasury
             </h1>
-            <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-              <Globe className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '6s' }} />
-              DSQL Active-Active Mesh
-            </span>
+            {dbStatus.isMock ? (
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <Activity className="w-3.5 h-3.5" />
+                Demo Mode: Mock Simulation
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <Globe className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '6s' }} />
+                Live Mode: AWS Aurora DSQL Connected
+              </span>
+            )}
           </div>
+          
+          {!dbStatus.isMock && invoices.length === 0 && (
+            <div className="mt-2 text-xs text-yellow-500 bg-yellow-500/10 border border-yellow-500/20 rounded p-2 max-w-xl">
+              ⚠️ <strong>Database Connected but Empty:</strong> A live database URL was detected ({dbStatus.urlValue}), but no tables or schemas have been initialized. Please run <code>npx prisma db push</code> on your workspace to sync the schema.
+            </div>
+          )}
           <p className="text-gray-400 text-sm mt-1">
             B2B Multi-Agent Treasury & Cross-Border Ledger Orchestration
           </p>
