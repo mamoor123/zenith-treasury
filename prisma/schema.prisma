@@ -1,0 +1,65 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Invoice {
+  id           String        @id @default(uuid())
+  invoiceNumber String       @unique
+  amount       Decimal
+  currency     String        @default("USD")
+  vendor       String
+  description  String?
+  issueDate    DateTime
+  dueDate      DateTime
+  status       String        @default("PENDING") // PENDING, PAID, PARTIALLY_PAID
+  region       String        @default("us-east-1") // us-east-1, eu-west-1, etc.
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  ledgerEntries LedgerEntry[]
+}
+
+model BankTransaction {
+  id              String        @id @default(uuid())
+  bankTxId        String        @unique
+  amount          Decimal
+  currency        String        @default("USD")
+  senderName      String
+  description     String?
+  transactionDate DateTime
+  status          String        @default("UNRECONCILED") // UNRECONCILED, RECONCILED, INVESTIGATING
+  region          String        @default("us-east-1")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  ledgerEntries   LedgerEntry[]
+}
+
+model LedgerEntry {
+  id                String           @id @default(uuid())
+  entryDate         DateTime         @default(now())
+  amount            Decimal
+  currency          String
+  invoiceId         String?
+  invoice           Invoice?         @relation(fields: [invoiceId], references: [id])
+  bankTransactionId String?
+  bankTransaction   BankTransaction? @relation(fields: [bankTransactionId], references: [id])
+  reconciledBy      String           @default("AI_SYSTEM") // AI_SYSTEM, MANUAL
+  auditStatus       String           @default("VERIFIED") // VERIFIED, FLAGGED
+  auditComments     String?
+  region            String           @default("us-east-1")
+  createdAt         DateTime         @default(now())
+}
+
+model AgentLog {
+  id         String   @id @default(uuid())
+  agentName  String   // Matcher, Investigator, Auditor
+  message    String
+  timestamp  DateTime @default(now())
+  level      String   @default("INFO") // INFO, WARN, SUCCESS
+  invoiceId  String?
+  bankTxId   String?
+}
+
