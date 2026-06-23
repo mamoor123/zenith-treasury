@@ -5,9 +5,19 @@ import { db } from "@/lib/db";
 // Fetch all invoices
 export async function getInvoices() {
   try {
-    return await db.invoice.findMany({
+    let invoices = await db.invoice.findMany({
       orderBy: { createdAt: "desc" },
     });
+
+    if (invoices.length === 0) {
+      console.log("No invoices found in database. Auto-seeding initial demo data...");
+      await resetDemo();
+      invoices = await db.invoice.findMany({
+        orderBy: { createdAt: "desc" },
+      });
+    }
+
+    return invoices;
   } catch (error) {
     console.error("Error fetching invoices:", error);
     return [];
@@ -17,9 +27,19 @@ export async function getInvoices() {
 // Fetch all bank transactions
 export async function getBankTransactions() {
   try {
-    return await db.bankTransaction.findMany({
+    let transactions = await db.bankTransaction.findMany({
       orderBy: { transactionDate: "desc" },
     });
+
+    if (transactions.length === 0) {
+      console.log("No bank transactions found in database. Auto-seeding initial demo data...");
+      await resetDemo();
+      transactions = await db.bankTransaction.findMany({
+        orderBy: { transactionDate: "desc" },
+      });
+    }
+
+    return transactions;
   } catch (error) {
     console.error("Error fetching bank transactions:", error);
     return [];

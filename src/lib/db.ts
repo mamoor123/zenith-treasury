@@ -525,8 +525,103 @@ const baseDb = prismaInstance ? {
     try {
       await prismaInstance.ledgerEntry.deleteMany();
       await prismaInstance.agentLog.deleteMany();
-      await prismaInstance.invoice.updateMany({ data: { status: "PENDING" } });
-      await prismaInstance.bankTransaction.updateMany({ data: { status: "UNRECONCILED" } });
+      await prismaInstance.invoice.deleteMany();
+      await prismaInstance.bankTransaction.deleteMany();
+
+      await prismaInstance.invoice.createMany({
+        data: [
+          {
+            invoiceNumber: "INV-1001",
+            amount: 12500.00,
+            currency: "USD",
+            vendor: "Vercel Hosting Inc",
+            description: "Enterprise Frontend Platform Subscription",
+            issueDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+            dueDate: new Date(Date.now() + 27 * 24 * 60 * 60 * 1000),
+            status: "PENDING",
+            region: "us-east-1",
+          },
+          {
+            invoiceNumber: "INV-1002",
+            amount: 3450.00,
+            currency: "USD",
+            vendor: "AWS Cloud Services",
+            description: "AWS Cloud Infrastructure Billing - May 2026",
+            issueDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+            dueDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
+            status: "PENDING",
+            region: "eu-west-1",
+          },
+          {
+            invoiceNumber: "INV-1003",
+            amount: 8900.00,
+            currency: "EUR",
+            vendor: "Acme Corp Europe",
+            description: "Consulting fees & regional support contract",
+            issueDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+            dueDate: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000),
+            status: "PENDING",
+            region: "eu-west-1",
+          },
+          {
+            invoiceNumber: "INV-1004",
+            amount: 150.00,
+            currency: "USD",
+            vendor: "GitHub Enterprise",
+            description: "Developer seats license",
+            issueDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+            dueDate: new Date(Date.now() + 29 * 24 * 60 * 60 * 1000),
+            status: "PENDING",
+            region: "us-east-1",
+          }
+        ]
+      });
+
+      await prismaInstance.bankTransaction.createMany({
+        data: [
+          {
+            bankTxId: "TX-9001",
+            amount: 12500.00,
+            currency: "USD",
+            senderName: "Vercel Hosting Inc",
+            description: "ACH Transfer ACH-VERCEL-1001",
+            transactionDate: new Date(Date.now() - 12 * 60 * 60 * 1000),
+            status: "UNRECONCILED",
+            region: "us-east-1",
+          },
+          {
+            bankTxId: "TX-9002",
+            amount: 3440.00,
+            currency: "USD",
+            senderName: "AWS Cloud Services LLC",
+            description: "Wire transfer wire-aws-3920",
+            transactionDate: new Date(Date.now() - 6 * 60 * 60 * 1000),
+            status: "UNRECONCILED",
+            region: "eu-west-1",
+          },
+          {
+            bankTxId: "TX-9003",
+            amount: 9550.00,
+            currency: "USD",
+            senderName: "Acme Europe SA",
+            description: "International transfer FX-ACME-EURUSD",
+            transactionDate: new Date(Date.now() - 18 * 60 * 60 * 1000),
+            status: "UNRECONCILED",
+            region: "eu-west-1",
+          },
+          {
+            bankTxId: "TX-9004",
+            amount: 1200.00,
+            currency: "USD",
+            senderName: "Unknown Depositor Inc",
+            description: "Cash deposit branch 49",
+            transactionDate: new Date(Date.now() - 2 * 60 * 60 * 1000),
+            status: "UNRECONCILED",
+            region: "us-east-1",
+          }
+        ]
+      });
+
       return { success: true };
     } catch (e) {
       console.warn("Real database reset failed, resetting mock instead:", e);
