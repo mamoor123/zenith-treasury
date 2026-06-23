@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { DsqlSigner } from "@aws-sdk/dsql-signer";
 
 // Define mock data store interfaces
 interface Invoice {
@@ -184,13 +185,49 @@ let prismaInstance: any = null;
 
 if (hasDbUrl) {
   try {
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      // For serverless cold starts and Aurora DSQL, we want aggressive timeouts
-      connectionTimeoutMillis: 5000,
-    });
-    const adapter = new PrismaPg(pool);
-    prismaInstance = new PrismaClient({ adapter });
+    const dbUrl = process.env.DATABASE_URL!;
+    const hostMatch = dbUrl.match(/@([^/:]+)/);
+    const hostname = hostMatch ? hostMatch[1] : null;
+
+    if (hostname && hostname.includes("dsql")) {
+      const signer = new DsqlSigner({
+        region: "us-east-1",
+        hostname: hostname,
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        }
+      });
+
+      const pool = new Pool({
+        host: hostname,
+        port: 5432,
+        database: "postgres",
+        user: "admin",
+        password: async () => {
+          try {
+            return await signer.getDbConnectAdminAuthToken();
+          } catch (e) {
+            console.error("Failed to generate DSQL DB connection token:", e);
+            throw e;
+          }
+        },
+        ssl: {
+          rejectUnauthorized: false
+        },
+        connectionTimeoutMillis: 5000,
+      });
+
+      const adapter = new PrismaPg(pool);
+      prismaInstance = new PrismaClient({ adapter });
+    } else {
+      const pool = new Pool({
+        connectionString: dbUrl,
+        connectionTimeoutMillis: 5000,
+      });
+      const adapter = new PrismaPg(pool);
+      prismaInstance = new PrismaClient({ adapter });
+    }
   } catch (error) {
     console.warn("Failed to initialize Prisma with DATABASE_URL, falling back to mock mode:", error);
   }

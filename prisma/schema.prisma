@@ -1,5 +1,6 @@
 datasource db {
-  provider = "postgresql"
+  provider     = "postgresql"
+  relationMode = "prisma"
 }
 
 generator client {
@@ -8,8 +9,8 @@ generator client {
 
 model Invoice {
   id           String        @id @default(uuid())
-  invoiceNumber String       @unique
-  amount       Decimal
+  invoiceNumber String
+  amount       Decimal       @db.Decimal(18, 2)
   currency     String        @default("USD")
   vendor       String
   description  String?
@@ -24,8 +25,8 @@ model Invoice {
 
 model BankTransaction {
   id              String        @id @default(uuid())
-  bankTxId        String        @unique
-  amount          Decimal
+  bankTxId        String
+  amount          Decimal       @db.Decimal(18, 2)
   currency        String        @default("USD")
   senderName      String
   description     String?
@@ -40,7 +41,7 @@ model BankTransaction {
 model LedgerEntry {
   id                String           @id @default(uuid())
   entryDate         DateTime         @default(now())
-  amount            Decimal
+  amount            Decimal          @db.Decimal(18, 2)
   currency          String
   invoiceId         String?
   invoice           Invoice?         @relation(fields: [invoiceId], references: [id])
